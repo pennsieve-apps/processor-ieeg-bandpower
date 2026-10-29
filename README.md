@@ -1,9 +1,11 @@
-# processor-ieeg-bandpower
+# processor-ieeg-bandpower: iEEG Spectral & Connectivity Features
 
 A step of the **Interictal Biomarker Mapping** workflow
 (`ieeg-prep → {ieeg-spikes, ieeg-bandpower → ieeg-normative, ieeg-hfo} → ieeg-report`).
 It measures, for every good channel of every intracranial EEG recording (SEEG or ECoG), how
-the signal's power is spread over the classic frequency bands.
+the signal's power is spread over the classic frequency bands, and how strongly each channel
+is coupled to the others (band coherence). Every per-channel value also goes into one long
+table, `features.csv`, in the shape `ieeg-normative` z-scores.
 
 - **For the epileptologist:** epileptogenic tissue often shows a different interictal spectrum
   from healthy cortex at the same place: more slow (delta) activity, sometimes less beta and
@@ -14,16 +16,17 @@ the signal's power is spread over the classic frequency bands.
 - **For the researcher:** a faithful reimplementation of the univariate features of Bernabei
   et al. 2022 (Brain): 0.5–80 Hz band-pass, resampling to 200 Hz, Welch PSD (2 s Hamming
   windows, 1 s overlap), PSD normalised to sum to one over 0.5–80 Hz and the median taken per
-  band; plus absolute and relative band power and, optionally, band coherence. The spectral code
-  is shared byte-for-byte with `ieeg-normative`, which computes the atlas reference with it, so
-  test and reference values are computed the same way.
+  band; plus absolute and relative band power; and the paper's bivariate feature, magnitude-squared
+  coherence between every channel pair per band (on by default). The spectral code is shared
+  byte-for-byte with `ieeg-normative`, which computes the atlas reference with it, so test and
+  reference values are computed the same way.
 
 ## Ports
 
 | Port | Direction | Placement | What |
 |---|---|---|---|
 | `ieeg` | input | subfolder | The ieeg-prep BIDS-iEEG derivative (`recordings.csv`, `*_desc-preproc_ieeg.edf` with `_channels.tsv` and `_events.tsv`), or any BIDS-iEEG dataset (`*_ieeg.edf/.bdf/.vhdr/.fif/.set`, sidecars optional). Found anywhere under `INPUT_DIR`, symlinks followed. |
-| `bandpower` | output | `OUTPUT_DIR` (or `OUTPUT_DIR/<LABEL>/`) | `bandpower.csv`, `coherence.csv` (when `COHERENCE=true`), `provenance.json`. |
+| `bandpower` | output | `OUTPUT_DIR` (or `OUTPUT_DIR/<LABEL>/`) | `bandpower.csv`, `features.csv`, `coherence.csv` (when `COHERENCE=true`, the default), `provenance.json`. |
 
 ## Parameters
 
@@ -36,7 +39,7 @@ the signal's power is spread over the classic frequency bands.
 | `WELCH_OVERLAP` | `0.5` | Window overlap as a fraction (0.5 = 1 s for 2 s windows). |
 | `BANDPASS` | `0.5-80` | First-order Butterworth band-pass, zero-phase, before resampling; `none` skips it. Not applied again when every used channel's `_channels.tsv` `low_cutoff`/`high_cutoff` already lie within it (the HUP atlas clips are 0.5–80 Hz). |
 | `BANDS` | `conventions` | `conventions`: delta 1–4, theta 4–8, alpha 8–13, beta 13–30, gamma 30–80 Hz. `bernabei2022`: the edges in the paper's Methods, 0.5–4, 4–8, 8–12, 12–30, 30–80 Hz. Or JSON, e.g. `{"delta": [1, 4], "gamma": [30, 80]}`. A `broadband` 1–80 Hz row is always added. |
-| `COHERENCE` | `false` | Also write `coherence.csv`: median magnitude-squared coherence per band for every channel pair (same Welch windows). |
+| `COHERENCE` | `true` | Coherence between every channel pair: `coherence.csv` and `coh_<band>` in `features.csv` (see step 6). `false`: band power only. |
 | `CHUNK_S` | `60` | Seconds read at a time; memory per chunk ≈ channels × seconds × rate × 8 bytes. |
 | `LABEL` | (empty) | When set, outputs go to `OUTPUT_DIR/<LABEL>/` (a workflow running this step twice, e.g. baseline and interictal-only). |
 
@@ -64,6 +67,20 @@ Per recording (one at a time):
      are divided by their sum, and the median over the band's bins (lo ≤ f < hi; the top band
      includes 80 Hz) is reported. This measures the *shape* of the spectrum, insensitive to overall
      amplitude, and it is what `ieeg-normative` z-scores by default.
+
+6. **Coherence** (`COHERENCE=true`, Bernabei et al. 2022, Methods "Bivariate features"):
+   magnitude-squared coherence |S<sub>xy</sub>|² / (S<sub>xx</sub> S<sub>yy</sub>) of every
+   channel pair from the cross-spectra of **1 s** symmetric Hamming windows **without overlap**,
+   averaged over the interval, on the same 200 Hz signal. The paper divides the clip into 1-s
+   intervals; the authors' code calls `mscohere(x, y, 200, 0, 1:80, 200)` on the 200 Hz clips,
+   which is this estimator (equal to `scipy.signal.coherence` with these windows; tested). Per
+   band, the **mean** over the band's 1 Hz bins (lo ≤ f < hi, the top band includes 80 Hz), as
+   in the authors' code. A channel's **coherence strength** `coh_<band>` is its mean coherence
+   with every other good channel of the recording.
+7. **Features** (`features.csv`, the shared shape of `conventions.md`): per channel
+   `relpow_<band>` (= `rel_power`), `normpow_<band>` (= `norm_median`), `logpow_<band>`
+   (log10 `abs_power`, µV²) and, with coherence, `coh_<band>`. `ieeg-normative` z-scores every
+   feature it finds; it reads the pairwise `coherence.csv` for its edge-level connectivity.
 
 ### Choices, and where the paper and the conventions differ
 
@@ -99,8 +116,14 @@ Per recording (one at a time):
 
 `norm_median` is an extra column beyond `conventions.md` (which lists `abs_power, rel_power`).
 
+**`features.csv`**: one row per good channel and feature, `recording_id, channel, feature, value`.
+Features: `relpow_<band>`, `normpow_<band>`, `logpow_<band>` for the five bands, and `coh_<band>`
+with `COHERENCE=true` (20 rows per channel by default). Any app that writes per-channel values
+can use this shape; `ieeg-normative` z-scores whatever it finds.
+
 **`coherence.csv`** (`COHERENCE=true`): `recording_id, channel_a, channel_b, band, coherence`
-(median magnitude-squared coherence over the band's bins, 0–1), each unordered pair once.
+(mean magnitude-squared coherence over the band's 1 Hz bins, 0–1), each unordered pair once:
+n(n−1)/2 × 5 rows per recording (~26,000 rows for 103 channels).
 
 **`provenance.json`**: app and version, tool versions, parameters, the spectral settings
 (`spectral`, read by ieeg-normative to compute its reference identically), inputs found, and per
@@ -119,16 +142,23 @@ Measured in Docker (linux/amd64 **emulated on an M-series Mac**, `--cpus 2 --mem
 
 | Input | Window | Wall time | cgroup `memory.peak` |
 |---|---|---|---|
-| 4 demo clips of HUP224 (230 channels, 1024 Hz, 4.6–5.7 min each; plain BIDS) | `all` | 14.7 s | 0.90 GB |
-| same, `COHERENCE=true` (26,335 pairs × 5 bands per clip) | `all` | 71 s | 0.94 GB |
-| 5 atlas patients (22–74 channels, 200 Hz, 60 s) | `baseline` | 0.9 s | 0.33 GB |
-| ieeg-prep output of the demo (24 clips, 6 patients, 72–206 channels, 1024 Hz) | `baseline` (90 s each) | 16 s (12 s in the app) | 0.91 GB |
+| 4 demo clips of HUP224 (230 channels, 1024 Hz, 4.6–5.7 min each; plain BIDS), `COHERENCE=false` | `all` | 14.7 s | 0.90 GB |
+| same, `COHERENCE=true` (26,335 pairs × 5 bands per clip; earlier version, 2 s windows, einsum) | `all` | 71 s | 0.94 GB |
+| 5 atlas patients via ieeg-prep (22–85 channels, 200 Hz, 60 s), coherence on | `baseline` | 3.5 s (0.8 s in the app) | 0.19 GB |
+| ieeg-prep output of the demo (24 clips, 6 patients, 72–206 channels, 1024 Hz), coherence on | `baseline` (90 s each) | 18 s (14 s in the app) | 0.85 GB |
+
+The cross-spectra are one small matrix product per frequency bin. The image pins BLAS to one
+thread (`OPENBLAS_NUM_THREADS=1`): OpenBLAS otherwise sizes its pool from the host's CPUs, and
+under a 2-CPU quota one 85-channel atlas clip took 9.2 s instead of 0.1 s. The 24 demo clips
+give 950,000 coherence rows (80 MB).
 
 The peak includes the page cache of the EDF files read; the process itself stays well below.
 A 1 h, 128-channel, 1024 Hz recording is ~11× the samples of a demo clip at half the channels:
-~25 s emulated (~100 s with coherence). The image is 124 MB compressed (275 MB unpacked).
-For studies with many hour-long recordings and `COHERENCE=true`, run it as `standard`
-(the 900 s timeout is Lambda's limit).
+~25 s emulated for band power (an estimate); coherence adds one 128 × 128 cross-spectral product
+per frequency bin and 1 s window (not measured at that length). The image is 124 MB compressed
+(275 MB unpacked). `computeTypes` stays `[standard, lambda]`: the measured runs are far below
+Lambda's 900 s and 2 GB. For studies with many hour-long, high-channel-count recordings, run it
+as `standard`.
 
 ## Running it locally
 
@@ -180,7 +210,12 @@ validated localiser.
   uniformly louder or quieter. `abs_power` is not, but depends on electrode type, impedance and
   montage.
 - Coherence between neighbouring bipolar channels that share a contact is inflated by the
-  shared contact.
+  shared contact, and coherence falls with distance; `coh_<band>` (a channel's mean over all
+  others) therefore depends on how the electrodes are placed. `ieeg-normative`'s edge-level
+  score compares each pair only with reference pairs between the same two regions.
+- Coherence from 60 windows (a 60 s clip) has a positive bias of roughly 1/60 for unrelated
+  channels; compare recordings of similar length (the atlas clips are 60 s).
+- `coherence.csv` grows with the square of the channel count (~n²/2 × 5 rows).
 - Line noise is not removed here (ieeg-prep notches it); with `BANDPASS=none` and raw input,
   the gamma band includes 50/60 Hz.
 

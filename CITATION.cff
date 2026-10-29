@@ -1,11 +1,12 @@
 cff-version: 1.2.0
 message: If you use this app, please cite it and the works it builds on, listed under references.
 type: software
-title: iEEG Band Power
-abstract: Spectral band power of every good channel of intracranial EEG recordings, following Bernabei et al. 2022
-  (band-pass 0.5-80 Hz, resampling to 200 Hz, Welch PSD with 2 s Hamming windows and 50% overlap), reported per
-  band as absolute power, relative power and the median of the sum-normalised spectrum, with optional band coherence;
-  one step of the Interictal Biomarker Mapping workflow.
+title: iEEG Spectral & Connectivity Features
+abstract: Per-channel spectral and connectivity features of intracranial EEG recordings, following Bernabei et al.
+  2022 (band-pass 0.5-80 Hz, resampling to 200 Hz, Welch PSD with 2 s Hamming windows and 50% overlap; band power
+  as absolute power, relative power and the median of the sum-normalised spectrum; magnitude-squared coherence
+  between channel pairs from 1 s windows, averaged over each band, and each channel's mean coherence), written in a
+  shared long feature table; one step of the Interictal Biomarker Mapping workflow.
 authors:
 - name: Pennsieve (University of Pennsylvania)
 repository-code: https://github.com/pennsieve-apps/processor-ieeg-bandpower
@@ -17,6 +18,7 @@ keywords:
 - epilepsy
 - spectral-analysis
 - band-power
+- coherence
 references:
 - type: article
   title: Normative intracranial EEG maps epileptogenic tissues in focal epilepsy

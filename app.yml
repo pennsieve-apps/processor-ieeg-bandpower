@@ -1,14 +1,16 @@
 # yaml-language-server: $schema=https://schemas.pennsieve.io/app-manifest/v1.json
 schemaVersion: "1.0"
 application:
-  name: iEEG Band Power
+  name: iEEG Spectral & Connectivity Features
   description: >-
-    Spectral band power of every good channel of intracranial EEG (SEEG or ECoG) recordings, the
-    univariate features of Bernabei et al. 2022 (Brain): band-pass 0.5-80 Hz, resample to 200 Hz,
-    Welch PSD (2 s Hamming windows, 50% overlap), then per band (delta 1-4, theta 4-8, alpha 8-13,
-    beta 13-30, gamma 30-80 Hz) absolute power, relative power (share of 1-80 Hz) and the paper's
-    median of the sum-normalised spectrum. For recordings with a seizure it uses the pre-ictal
-    baseline by default. Optional band coherence between channel pairs. Feeds ieeg-normative.
+    Per-channel spectral and connectivity features of intracranial EEG (SEEG or ECoG) recordings,
+    after Bernabei et al. 2022 (Brain): band-pass 0.5-80 Hz, resample to 200 Hz, Welch PSD (2 s
+    Hamming windows, 50% overlap), then per band (delta 1-4, theta 4-8, alpha 8-13, beta 13-30,
+    gamma 30-80 Hz) absolute and relative power and the paper's median of the sum-normalised
+    spectrum; and magnitude-squared coherence between every channel pair (1 s windows, mean over
+    the band), with each channel's mean coherence as its coherence strength. Writes the features
+    in the shared long shape (features.csv) that ieeg-normative z-scores. For recordings with a
+    seizure it uses the pre-ictal baseline by default.
   type: processor
   tags:
     - ieeg
@@ -19,11 +21,13 @@ application:
     - neuroscience
     - spectral-analysis
     - band-power
+    - coherence
+    - connectivity
     - feature-extraction
 runtime:
   # One recording at a time, streamed in 60 s chunks. 24 demo clips (72-230 bipolar channels,
-  # 1024 Hz, 4-6 min) take ~15 s with a 0.9 GB cgroup peak, page cache included; COHERENCE=true
-  # with 230 channels peaks at 0.94 GB (see README "Runtime").
+  # 1024 Hz, 90 s baseline each) take ~18 s with coherence (the default) and a 0.85 GB cgroup peak,
+  # page cache included (see README "Runtime").
   cpu: 1024
   memory: 2048
   computeTypes:
@@ -88,8 +92,11 @@ parameters:
   - name: COHERENCE
     type: boolean
     label: Coherence
-    description: Also write coherence.csv, the median magnitude-squared coherence per band for every channel pair.
-    defaultValue: false
+    description: >-
+      Coherence between every channel pair (Bernabei et al. 2022: magnitude-squared coherence from
+      1 s Hamming windows without overlap, mean over the band's 1 Hz bins): coherence.csv, and each
+      channel's mean coherence (coh_<band>) in features.csv. Off: band power only.
+    defaultValue: true
   - name: CHUNK_S
     type: number
     label: Chunk (s)
@@ -119,8 +126,10 @@ outputs:
     description: >-
       bandpower.csv (recording_id, channel, band, abs_power [µV²], rel_power [share of 1-80 Hz],
       norm_median [median of the sum-1-normalised 0.5-80 Hz PSD over the band]), one row per good
-      channel and band plus broadband; coherence.csv (recording_id, channel_a, channel_b, band,
-      coherence) when COHERENCE=true; provenance.json.
+      channel and band plus broadband; features.csv (recording_id, channel, feature, value: the
+      shared long shape, with relpow_<band>, normpow_<band>, logpow_<band> and, with COHERENCE,
+      coh_<band>); coherence.csv (recording_id, channel_a, channel_b, band, coherence) with
+      COHERENCE; provenance.json (with the spectral settings ieeg-normative reads).
     mediaTypes:
       - text/csv
       - application/json

@@ -74,6 +74,31 @@ def test_stream_chunks_equal_one_piece():
     assert np.allclose(a1.psd()[1], a2.psd()[1], rtol=1e-3)
 
 
+def test_coherence_matches_scipy_and_paper_windows():
+    """1 s Hamming windows, no overlap (mscohere(x, y, 200, 0, 1:80, 200) at 200 Hz) = scipy.signal.coherence."""
+    rng = np.random.default_rng(3)
+    common = rng.standard_normal(200 * 60)
+    x = np.vstack([common + rng.standard_normal(len(common)) * k for k in (0.5, 1.0, 3.0)])
+    p = S.SpectralParams()
+    acc, info = S.stream(lambda a, b: x[:, a:b], [(0, x.shape[1])], 200, 3, p, prefiltered=True, cross=True)
+    assert info["coherence_windows"] == 60
+    c = acc.coh.coherence()
+    f2, c2 = signal.coherence(x[0], x[2], fs=200, window=signal.windows.hamming(200, sym=True), nperseg=200,
+                              noverlap=0, detrend="constant")
+    assert np.allclose(c[0, 2], c2[: c.shape[-1]], rtol=1e-8)
+    names, cb = S.coherence_bands(acc.coh.freqs[: acc.coh.nf], c, p.bands)
+    alpha = (f2 >= 8) & (f2 < 13)
+    assert cb[0, 2, 2] == pytest.approx(c2[alpha].mean())
+    strength = S.coherence_strength(cb)
+    assert strength[0, 0] == pytest.approx((cb[0, 1, 0] + cb[0, 2, 0]) / 2)
+    assert strength[0, 0] > strength[2, 0]          # the noisiest channel is the least coherent
+
+
+def test_feature_family():
+    assert S.feature_family("normpow_delta") == "spectral" and S.feature_family("coh_gamma") == "coherence"
+    assert S.feature_family("spike_rate") == "other" and S.feature_family("x") == "other"
+
+
 def test_band_table_definitions():
     f = np.arange(0, 100.5, 0.5)
     psd = np.ones((1, len(f)))
@@ -143,7 +168,7 @@ def test_window_modes():
 
 def test_run_on_derivative(fixture_dir, tmp_path, monkeypatch):
     out = tmp_path / "out"
-    assert run(monkeypatch, fixture_dir / "linked", out, COHERENCE="true") == 0
+    assert run(monkeypatch, fixture_dir / "linked", out) == 0          # COHERENCE defaults to true
     rows = table(out / "bandpower.csv")
     assert list(rows[0]) == ["recording_id", "channel", "band", "abs_power", "rel_power", "norm_median"]
     rids = {r["recording_id"] for r in rows}
@@ -168,6 +193,20 @@ def test_run_on_derivative(fixture_dir, tmp_path, monkeypatch):
     coh = table(out / "coherence.csv")
     assert len([r for r in coh if r["recording_id"] == ICTAL]) == 10 * 5   # 5 channels -> 10 pairs x 5 bands
     assert all(0 <= float(r["coherence"]) <= 1 for r in coh)
+    feats = table(out / "features.csv")
+    assert list(feats[0]) == ["recording_id", "channel", "feature", "value"]
+    names = {r["feature"] for r in feats}
+    bands = ("delta", "theta", "alpha", "beta", "gamma")
+    assert names == {f"{p}_{b}" for p in ("relpow", "normpow", "logpow", "coh") for b in bands}
+    fv = {(r["recording_id"], r["channel"], r["feature"]): float(r["value"]) for r in feats}
+    assert fv[(ICTAL, "LA01-LA02", "relpow_alpha")] == pytest.approx(value(rows, ICTAL, "LA01-LA02", "alpha", "rel_power"), rel=1e-4)
+    assert fv[(ICTAL, "LA01-LA02", "normpow_delta")] == pytest.approx(value(rows, ICTAL, "LA01-LA02", "delta", "norm_median"), rel=1e-4)
+    assert fv[(ICTAL, "LA01-LA02", "logpow_beta")] == pytest.approx(np.log10(value(rows, ICTAL, "LA01-LA02", "beta", "abs_power")), abs=1e-4)
+    # coh_<band> = mean of the channel's pair coherences in coherence.csv
+    pairs = [float(r["coherence"]) for r in coh if r["recording_id"] == ICTAL and r["band"] == "theta"
+             and "LA01-LA02" in (r["channel_a"], r["channel_b"])]
+    assert len(pairs) == 4 and fv[(ICTAL, "LA01-LA02", "coh_theta")] == pytest.approx(np.mean(pairs), rel=1e-4)
+    assert prov["recordings"][ICTAL]["coherence_windows"] > 0 and prov["spectral"]["coherence"]["window_s"] == 1.0
 
 
 def test_window_changes_seizure_band(fixture_dir, tmp_path, monkeypatch):
@@ -181,11 +220,12 @@ def test_window_changes_seizure_band(fixture_dir, tmp_path, monkeypatch):
 
 def test_plain_bids_and_label(fixture_dir, tmp_path, monkeypatch):
     out = tmp_path / "out"
-    assert run(monkeypatch, fixture_dir / "plain", out, LABEL="pre") == 0
+    assert run(monkeypatch, fixture_dir / "plain", out, LABEL="pre", COHERENCE="false") == 0
     prov = json.loads((out / "pre" / "provenance.json").read_text())
     rec = prov["recordings"]["sub-P02_ses-implant1_task-ictal01_run-01"]
     assert rec["intervals_s"] == [[0.0, 30.0]]          # `ictal` event at 60 s, no baseline, 30 s margin
     assert not (out / "pre" / "coherence.csv").exists()
+    assert not any(r["feature"].startswith("coh_") for r in table(out / "pre" / "features.csv"))
 
 
 def test_failed_recording_is_skipped(fixture_dir, tmp_path, monkeypatch):
@@ -224,11 +264,11 @@ def test_symlinked_input(fixture_dir, tmp_path, monkeypatch):
 
 def test_lambda_handler(fixture_dir, tmp_path, monkeypatch):
     from processor import handler
-    monkeypatch.setenv("COHERENCE", "true")           # left over from a previous invocation
+    monkeypatch.setenv("COHERENCE", "false")          # left over from a previous invocation
     res = handler.handler({"inputDir": str(fixture_dir / "plain"), "outputDir": str(tmp_path / "out"),
                            "WINDOW": "all"}, None)
     assert res["status"] == "ok"
-    assert os.environ.get("COHERENCE") is None and not (tmp_path / "out" / "coherence.csv").exists()
+    assert os.environ.get("COHERENCE") is None and (tmp_path / "out" / "coherence.csv").exists()
     with pytest.raises(RuntimeError):
         handler.handler({"inputDir": str(tmp_path / "nothing"), "outputDir": str(tmp_path / "o2")}, None)
 

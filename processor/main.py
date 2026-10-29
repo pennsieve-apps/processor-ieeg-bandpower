@@ -4,6 +4,8 @@ processor-ieeg-bandpower: Welch spectra and band power per good channel of every
   INPUT_DIR   the ieeg-prep BIDS-iEEG derivative (recordings.csv + EDF + sidecars), or any
               BIDS-iEEG dataset (*_ieeg.edf/.vhdr/.fif/.bdf/.set with _channels.tsv/_events.tsv)
   OUTPUT_DIR[/LABEL]/bandpower.csv    recording_id, channel, band, abs_power, rel_power, norm_median
+  OUTPUT_DIR[/LABEL]/features.csv     recording_id, channel, feature, value (long format, conventions.md):
+                                      relpow_<band>, normpow_<band>, logpow_<band>, coh_<band> (COHERENCE=true)
   OUTPUT_DIR[/LABEL]/coherence.csv    recording_id, channel_a, channel_b, band, coherence (COHERENCE=true)
   OUTPUT_DIR[/LABEL]/provenance.json
 
@@ -40,7 +42,7 @@ TRUE = ("1", "true", "yes", "on")
 
 DEFAULTS = {
     "WINDOW": "baseline", "MARGIN_S": "30", "RESAMPLE_HZ": "200", "WELCH_WINDOW_S": "2", "WELCH_OVERLAP": "0.5",
-    "BANDPASS": "0.5-80", "BANDS": "conventions", "COHERENCE": "false", "CHUNK_S": "60", "LABEL": "",
+    "BANDPASS": "0.5-80", "BANDS": "conventions", "COHERENCE": "true", "CHUNK_S": "60", "LABEL": "",
 }
 
 
@@ -116,7 +118,7 @@ def already_filtered(rec: I.Recording, names: list[str], band: tuple[float, floa
     return True
 
 
-def process(rec: I.Recording, params: S.SpectralParams, other: dict, bp_writer, coh_writer) -> dict:
+def process(rec: I.Recording, params: S.SpectralParams, other: dict, bp_writer, coh_writer, feat_writer) -> dict:
     import mne
 
     t0 = time.monotonic()
@@ -146,12 +148,19 @@ def process(rec: I.Recording, params: S.SpectralParams, other: dict, bp_writer, 
         for b, band in enumerate(bt.bands):
             bp_writer.writerow([rec.recording_id, name, band, f"{bt.abs_power[c, b]:.6g}", f"{bt.rel_power[c, b]:.6g}",
                                 f"{bt.norm_median[c, b]:.6g}"])
+    coh_bands = None
     if other["coherence"]:
-        cnames, cb = S.coherence_bands(freqs, acc.coherence(), params.bands)
+        if acc.coh.n_windows == 0:
+            raise ValueError(f"no complete {params.coh_window_s:g} s coherence window")
+        cnames, cb = S.coherence_bands(acc.coh.freqs[: acc.coh.nf], acc.coh.coherence(), params.bands)
+        coh_bands = (cnames, cb)
         for i in range(len(names)):
             for j in range(i + 1, len(names)):
                 for b, band in enumerate(cnames):
                     coh_writer.writerow([rec.recording_id, names[i], names[j], band, f"{cb[i, j, b]:.6g}"])
+    for fname, vals in S.channel_features(bt, coh_bands):
+        for c, name in enumerate(names):
+            feat_writer.writerow([rec.recording_id, name, fname, "" if not np.isfinite(vals[c]) else f"{vals[c]:.6g}"])
     secs = time.monotonic() - t0
     n_good = len(idx)
     log.info("%s: %d good of %d channels, %g Hz, %s, %.1f s used (%d windows)%s, %.1fs", rec.recording_id, n_good,
@@ -192,22 +201,25 @@ def main() -> int:
     per_rec: dict[str, dict] = {}
     n_ok = 0
     bp_path, coh_path = out / "bandpower.csv", out / "coherence.csv"
-    with open(bp_path, "w", newline="") as bp_fh, \
+    with open(bp_path, "w", newline="") as bp_fh, open(out / "features.csv", "w", newline="") as ft_fh, \
             (open(coh_path, "w", newline="") if other["coherence"] else open(os.devnull, "w")) as coh_fh:
         bp = csv.writer(bp_fh)
         bp.writerow(["recording_id", "channel", "band", "abs_power", "rel_power", "norm_median"])
+        ft = csv.writer(ft_fh)
+        ft.writerow(["recording_id", "channel", "feature", "value"])
         coh = csv.writer(coh_fh)
         if other["coherence"]:
             coh.writerow(["recording_id", "channel_a", "channel_b", "band", "coherence"])
         for rec in recs:
             try:
-                per_rec[rec.recording_id] = {"path": rel(rec.path), **process(rec, params, other, bp, coh)}
+                per_rec[rec.recording_id] = {"path": rel(rec.path), **process(rec, params, other, bp, coh, ft)}
                 n_ok += 1
             except Exception as e:  # noqa: BLE001 - a recording that fails is logged and skipped
                 log.error("%s: failed: %s", rec.recording_id, e)
                 log.debug(traceback.format_exc())
                 per_rec[rec.recording_id] = {"path": rel(rec.path), "status": "failed", "error": str(e)}
             bp_fh.flush()
+            ft_fh.flush()
 
     provenance = {
         "app": APP_NAME, "appVersion": app_version(), "tools": tool_versions(),
@@ -216,7 +228,7 @@ def main() -> int:
         "seconds": round(time.monotonic() - t_start, 2),
         "parameters": raw_params, "spectral": params.as_dict(),
         "inputsFound": sorted(rel(r.path) for r in recs),
-        "outputs": ["bandpower.csv"] + (["coherence.csv"] if other["coherence"] else []),
+        "outputs": ["bandpower.csv", "features.csv"] + (["coherence.csv"] if other["coherence"] else []),
         "recordings": per_rec,
     }
     with open(out / "provenance.json", "w") as fh:
