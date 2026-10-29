@@ -1,0 +1,33 @@
+# Runtime dependencies, resolved on python:3.12.15-slim-bookworm (linux/amd64).
+# MNE-Python reads EDF/BDF/BrainVision/FIF/EEGLAB; NumPy/SciPy do the filtering, resampling
+# and Welch spectra; awslambdaric serves the image as a Lambda function.
+mne==1.13.2
+numpy==2.5.4
+scipy==1.18.1
+awslambdaric==4.2.3
+# dependencies of the above
+contourpy==1.4.0
+cycler==0.12.1
+decorator==5.3.1
+fonttools==4.68.0
+Jinja2==3.1.6
+kiwisolver==1.5.1
+lazy-loader==0.6
+MarkupSafe==3.0.4
+matplotlib==3.11.2
+packaging==26.3
+pillow==13.0.0
+platformdirs==4.14.0
+pooch==1.9.0
+pyparsing==3.3.3
+python-dateutil==3.0.0
+requests==2.34.2
+certifi==2026.10.23
+charset-normalizer==3.5.2
+idna==3.20
+urllib3==2.8.0
+simplejson==4.2.0
+six==1.17.0
+snapshot-restore-py==1.0.0
+tqdm==4.70.1
+tzdata==2026.6

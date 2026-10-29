@@ -1,0 +1,435 @@
+cff-version: 1.2.0
+message: If you use this app, please cite it and the works it builds on, listed under references.
+type: software
+title: iEEG Band Power
+abstract: Spectral band power of every good channel of intracranial EEG recordings, following Bernabei et al. 2022
+  (band-pass 0.5-80 Hz, resampling to 200 Hz, Welch PSD with 2 s Hamming windows and 50% overlap), reported per
+  band as absolute power, relative power and the median of the sum-normalised spectrum, with optional band coherence;
+  one step of the Interictal Biomarker Mapping workflow.
+authors:
+- name: Pennsieve (University of Pennsylvania)
+repository-code: https://github.com/pennsieve-apps/processor-ieeg-bandpower
+license: Apache-2.0
+keywords:
+- ieeg
+- seeg
+- electrophysiology
+- epilepsy
+- spectral-analysis
+- band-power
+references:
+- type: article
+  title: Normative intracranial EEG maps epileptogenic tissues in focal epilepsy
+  authors:
+  - family-names: Bernabei
+    given-names: John M
+  - family-names: Sinha
+    given-names: Nishant
+  - family-names: Arnold
+    given-names: T Campbell
+  - family-names: Conrad
+    given-names: Erin
+  - family-names: Ong
+    given-names: Ian
+  - family-names: Pattnaik
+    given-names: Akash R
+  - family-names: Stein
+    given-names: Joel M
+  - family-names: Shinohara
+    given-names: Russell T
+  - family-names: Lucas
+    given-names: Timothy H
+  - family-names: Bassett
+    given-names: Dani S
+  - family-names: Davis
+    given-names: Kathryn A
+  - family-names: Litt
+    given-names: Brian
+  year: 2022
+  journal: Brain
+  volume: 145
+  issue: '6'
+  start: '1949'
+  end: '1961'
+  doi: 10.1093/brain/awab480
+- type: article
+  title: Normative brain mapping of interictal intracranial EEG to localize epileptogenic tissue
+  authors:
+  - family-names: Taylor
+    given-names: Peter N
+  - family-names: Papasavvas
+    given-names: Christoforos A
+  - family-names: Owen
+    given-names: Thomas W
+  - family-names: Schroeder
+    given-names: Gabrielle M
+  - family-names: Hutchings
+    given-names: Frances E
+  - family-names: Chowdhury
+    given-names: Fahmida A
+  - family-names: Diehl
+    given-names: Beate
+  - family-names: Duncan
+    given-names: John S
+  - family-names: McEvoy
+    given-names: Andrew W
+  - family-names: Miserocchi
+    given-names: Anna
+  - family-names: de Tisi
+    given-names: Jane
+  - family-names: Vos
+    given-names: Sjoerd B
+  - family-names: Walker
+    given-names: Matthew C
+  - family-names: Wang
+    given-names: Yujiang
+  year: 2022
+  journal: Brain
+  volume: 145
+  issue: '3'
+  start: '939'
+  end: '949'
+  doi: 10.1093/brain/awab380
+- type: article
+  title: 'The use of fast Fourier transform for the estimation of power spectra: A method based on time averaging
+    over short, modified periodograms'
+  authors:
+  - family-names: Welch
+    given-names: P.
+  year: 1967
+  journal: IEEE Transactions on Audio and Electroacoustics
+  volume: 15
+  issue: '2'
+  start: '70'
+  end: '73'
+  doi: 10.1109/TAU.1967.1161901
+- type: article
+  title: MEG and EEG data analysis with MNE-Python
+  authors:
+  - family-names: Gramfort
+    given-names: Alexandre
+  year: 2013
+  journal: Frontiers in Neuroscience
+  volume: 7
+  doi: 10.3389/fnins.2013.00267
+  start: '267'
+- type: article
+  title: 'SciPy 1.0: fundamental algorithms for scientific computing in Python'
+  authors:
+  - family-names: Virtanen
+    given-names: Pauli
+  - family-names: Gommers
+    given-names: Ralf
+  - family-names: Oliphant
+    given-names: Travis E.
+  - family-names: Haberland
+    given-names: Matt
+  - family-names: Reddy
+    given-names: Tyler
+  - family-names: Cournapeau
+    given-names: David
+  - family-names: Burovski
+    given-names: Evgeni
+  - family-names: Peterson
+    given-names: Pearu
+  - family-names: Weckesser
+    given-names: Warren
+  - family-names: Bright
+    given-names: Jonathan
+  - family-names: van der Walt
+    given-names: Stéfan J.
+  - family-names: Brett
+    given-names: Matthew
+  - family-names: Wilson
+    given-names: Joshua
+  - family-names: Millman
+    given-names: K. Jarrod
+  - family-names: Mayorov
+    given-names: Nikolay
+  - family-names: Nelson
+    given-names: Andrew R. J.
+  - family-names: Jones
+    given-names: Eric
+  - family-names: Kern
+    given-names: Robert
+  - family-names: Larson
+    given-names: Eric
+  - family-names: Carey
+    given-names: C J
+  - family-names: Polat
+    given-names: İlhan
+  - family-names: Feng
+    given-names: Yu
+  - family-names: Moore
+    given-names: Eric W.
+  - family-names: VanderPlas
+    given-names: Jake
+  - family-names: Laxalde
+    given-names: Denis
+  - family-names: Perktold
+    given-names: Josef
+  - family-names: Cimrman
+    given-names: Robert
+  - family-names: Henriksen
+    given-names: Ian
+  - family-names: Quintero
+    given-names: E. A.
+  - family-names: Harris
+    given-names: Charles R.
+  - family-names: Archibald
+    given-names: Anne M.
+  - family-names: Ribeiro
+    given-names: Antônio H.
+  - family-names: Pedregosa
+    given-names: Fabian
+  - family-names: van Mulbregt
+    given-names: Paul
+  - name: SciPy 1.0 Contributors
+  - family-names: Vijaykumar
+    given-names: Aditya
+  - family-names: Bardelli
+    given-names: Alessandro Pietro
+  - family-names: Rothberg
+    given-names: Alex
+  - family-names: Hilboll
+    given-names: Andreas
+  - family-names: Kloeckner
+    given-names: Andreas
+  - family-names: Scopatz
+    given-names: Anthony
+  - family-names: Lee
+    given-names: Antony
+  - family-names: Rokem
+    given-names: Ariel
+  - family-names: Woods
+    given-names: C. Nathan
+  - family-names: Fulton
+    given-names: Chad
+  - family-names: Masson
+    given-names: Charles
+  - family-names: Häggström
+    given-names: Christian
+  - family-names: Fitzgerald
+    given-names: Clark
+  - family-names: Nicholson
+    given-names: David A.
+  - family-names: Hagen
+    given-names: David R.
+  - family-names: Pasechnik
+    given-names: Dmitrii V.
+  - family-names: Olivetti
+    given-names: Emanuele
+  - family-names: Martin
+    given-names: Eric
+  - family-names: Wieser
+    given-names: Eric
+  - family-names: Silva
+    given-names: Fabrice
+  - family-names: Lenders
+    given-names: Felix
+  - family-names: Wilhelm
+    given-names: Florian
+  - family-names: Young
+    given-names: G.
+  - family-names: Price
+    given-names: Gavin A.
+  - family-names: Ingold
+    given-names: Gert-Ludwig
+  - family-names: Allen
+    given-names: Gregory E.
+  - family-names: Lee
+    given-names: Gregory R.
+  - family-names: Audren
+    given-names: Hervé
+  - family-names: Probst
+    given-names: Irvin
+  - family-names: Dietrich
+    given-names: Jörg P.
+  - family-names: Silterra
+    given-names: Jacob
+  - family-names: Webber
+    given-names: James T
+  - family-names: Slavič
+    given-names: Janko
+  - family-names: Nothman
+    given-names: Joel
+  - family-names: Buchner
+    given-names: Johannes
+  - family-names: Kulick
+    given-names: Johannes
+  - family-names: Schönberger
+    given-names: Johannes L.
+  - family-names: de Miranda Cardoso
+    given-names: José Vinícius
+  - family-names: Reimer
+    given-names: Joscha
+  - family-names: Harrington
+    given-names: Joseph
+  - family-names: Rodríguez
+    given-names: Juan Luis Cano
+  - family-names: Nunez-Iglesias
+    given-names: Juan
+  - family-names: Kuczynski
+    given-names: Justin
+  - family-names: Tritz
+    given-names: Kevin
+  - family-names: Thoma
+    given-names: Martin
+  - family-names: Newville
+    given-names: Matthew
+  - family-names: Kümmerer
+    given-names: Matthias
+  - family-names: Bolingbroke
+    given-names: Maximilian
+  - family-names: Tartre
+    given-names: Michael
+  - family-names: Pak
+    given-names: Mikhail
+  - family-names: Smith
+    given-names: Nathaniel J.
+  - family-names: Nowaczyk
+    given-names: Nikolai
+  - family-names: Shebanov
+    given-names: Nikolay
+  - family-names: Pavlyk
+    given-names: Oleksandr
+  - family-names: Brodtkorb
+    given-names: Per A.
+  - family-names: Lee
+    given-names: Perry
+  - family-names: McGibbon
+    given-names: Robert T.
+  - family-names: Feldbauer
+    given-names: Roman
+  - family-names: Lewis
+    given-names: Sam
+  - family-names: Tygier
+    given-names: Sam
+  - family-names: Sievert
+    given-names: Scott
+  - family-names: Vigna
+    given-names: Sebastiano
+  - family-names: Peterson
+    given-names: Stefan
+  - family-names: More
+    given-names: Surhud
+  - family-names: Pudlik
+    given-names: Tadeusz
+  - family-names: Oshima
+    given-names: Takuya
+  - family-names: Pingel
+    given-names: Thomas J.
+  - family-names: Robitaille
+    given-names: Thomas P.
+  - family-names: Spura
+    given-names: Thomas
+  - family-names: Jones
+    given-names: Thouis R.
+  - family-names: Cera
+    given-names: Tim
+  - family-names: Leslie
+    given-names: Tim
+  - family-names: Zito
+    given-names: Tiziano
+  - family-names: Krauss
+    given-names: Tom
+  - family-names: Upadhyay
+    given-names: Utkarsh
+  - family-names: Halchenko
+    given-names: Yaroslav O.
+  - family-names: Vázquez-Baeza
+    given-names: Yoshiki
+  year: 2020
+  journal: Nature Methods
+  volume: 17
+  issue: '3'
+  start: '261'
+  end: '272'
+  doi: 10.1038/s41592-019-0686-2
+- type: article
+  title: iEEG-BIDS, extending the Brain Imaging Data Structure specification to human intracranial electrophysiology
+  authors:
+  - family-names: Holdgraf
+    given-names: Christopher
+  - family-names: Appelhoff
+    given-names: Stefan
+  - family-names: Bickel
+    given-names: Stephan
+  - family-names: Bouchard
+    given-names: Kristofer
+  - family-names: D’Ambrosio
+    given-names: Sasha
+  - family-names: David
+    given-names: Olivier
+  - family-names: Devinsky
+    given-names: Orrin
+  - family-names: Dichter
+    given-names: Benjamin
+  - family-names: Flinker
+    given-names: Adeen
+  - family-names: Foster
+    given-names: Brett L.
+  - family-names: Gorgolewski
+    given-names: Krzysztof J.
+  - family-names: Groen
+    given-names: Iris
+  - family-names: Groppe
+    given-names: David
+  - family-names: Gunduz
+    given-names: Aysegul
+  - family-names: Hamilton
+    given-names: Liberty
+  - family-names: Honey
+    given-names: Christopher J.
+  - family-names: Jas
+    given-names: Mainak
+  - family-names: Knight
+    given-names: Robert
+  - family-names: Lachaux
+    given-names: Jean-Philippe
+  - family-names: Lau
+    given-names: Jonathan C.
+  - family-names: Lee-Messer
+    given-names: Christopher
+  - family-names: Lundstrom
+    given-names: Brian N.
+  - family-names: Miller
+    given-names: Kai J.
+  - family-names: Ojemann
+    given-names: Jeffrey G.
+  - family-names: Oostenveld
+    given-names: Robert
+  - family-names: Petridou
+    given-names: Natalia
+  - family-names: Piantoni
+    given-names: Gio
+  - family-names: Pigorini
+    given-names: Andrea
+  - family-names: Pouratian
+    given-names: Nader
+  - family-names: Ramsey
+    given-names: Nick F.
+  - family-names: Stolk
+    given-names: Arjen
+  - family-names: Swann
+    given-names: Nicole C.
+  - family-names: Tadel
+    given-names: François
+  - family-names: Voytek
+    given-names: Bradley
+  - family-names: Wandell
+    given-names: Brian A.
+  - family-names: Winawer
+    given-names: Jonathan
+  - family-names: Whitaker
+    given-names: Kirstie
+  - family-names: Zehl
+    given-names: Lyuba
+  - family-names: Hermes
+    given-names: Dora
+  year: 2019
+  journal: Scientific Data
+  volume: 6
+  issue: '1'
+  start: '102'
+  doi: 10.1038/s41597-019-0105-7

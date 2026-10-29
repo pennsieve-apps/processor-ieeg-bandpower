@@ -1,0 +1,126 @@
+# yaml-language-server: $schema=https://schemas.pennsieve.io/app-manifest/v1.json
+schemaVersion: "1.0"
+application:
+  name: iEEG Band Power
+  description: >-
+    Spectral band power of every good channel of intracranial EEG (SEEG or ECoG) recordings, the
+    univariate features of Bernabei et al. 2022 (Brain): band-pass 0.5-80 Hz, resample to 200 Hz,
+    Welch PSD (2 s Hamming windows, 50% overlap), then per band (delta 1-4, theta 4-8, alpha 8-13,
+    beta 13-30, gamma 30-80 Hz) absolute power, relative power (share of 1-80 Hz) and the paper's
+    median of the sum-normalised spectrum. For recordings with a seizure it uses the pre-ictal
+    baseline by default. Optional band coherence between channel pairs. Feeds ieeg-normative.
+  type: processor
+  tags:
+    - ieeg
+    - seeg
+    - eeg
+    - electrophysiology
+    - epilepsy
+    - neuroscience
+    - spectral-analysis
+    - band-power
+    - feature-extraction
+runtime:
+  # One recording at a time, streamed in 60 s chunks. 24 demo clips (72-230 bipolar channels,
+  # 1024 Hz, 4-6 min) take ~15 s with a 0.9 GB cgroup peak, page cache included; COHERENCE=true
+  # with 230 channels peaks at 0.94 GB (see README "Runtime").
+  cpu: 1024
+  memory: 2048
+  computeTypes:
+    - standard
+    - lambda
+  timeoutSeconds: 900
+parameters:
+  - name: WINDOW
+    type: string
+    label: Interval
+    description: >-
+      Which part of each recording is used. baseline: for a recording with a known seizure, the
+      baseline interval (recordings.csv baseline_start_s/baseline_end_s or a `baseline` event), or
+      from the start to MARGIN_S before onset when there is none; a recording without a known
+      seizure is used whole. all: the whole recording. interictal-only: everything except each
+      seizure and MARGIN_S around it. Artifact events are always cut out.
+    defaultValue: baseline
+    validValues: [baseline, all, interictal-only]
+  - name: MARGIN_S
+    type: number
+    label: Seizure margin (s)
+    description: Seconds kept clear before a seizure onset (and after its end, for interictal-only).
+    defaultValue: 30
+    min: 0
+  - name: RESAMPLE_HZ
+    type: number
+    label: Resample to (Hz)
+    description: >-
+      Every recording is resampled to this rate before the spectra, so recordings at 512, 1024 or
+      2048 Hz and the 200 Hz HUP atlas are computed on the same grid. At least 160.
+    defaultValue: 200
+    min: 160
+  - name: WELCH_WINDOW_S
+    type: number
+    label: Welch window (s)
+    description: Length of each Hamming window of the Welch estimate (2 s gives 0.5 Hz bins).
+    defaultValue: 2
+    min: 0.5
+  - name: WELCH_OVERLAP
+    type: number
+    label: Welch overlap
+    description: Overlap between consecutive windows, as a fraction of the window (0.5 = 1 s for 2 s windows).
+    defaultValue: 0.5
+    min: 0
+    max: 0.95
+  - name: BANDPASS
+    type: string
+    label: Band-pass (Hz)
+    description: >-
+      First-order Butterworth band-pass applied (zero-phase) before resampling, as in Bernabei et al.
+      2022, e.g. 0.5-80; none to skip. Not applied again to channels whose _channels.tsv cutoffs
+      already lie within it (such as the HUP atlas clips, 0.5-80 Hz).
+    defaultValue: "0.5-80"
+  - name: BANDS
+    type: string
+    label: Bands
+    description: >-
+      conventions (delta 1-4, theta 4-8, alpha 8-13, beta 13-30, gamma 30-80 Hz), bernabei2022
+      (the edges in the paper's Methods: 0.5-4, 4-8, 8-12, 12-30, 30-80 Hz), or a JSON object
+      such as {"delta": [1, 4], "gamma": [30, 80]}. A broadband 1-80 Hz row is always added.
+    defaultValue: conventions
+  - name: COHERENCE
+    type: boolean
+    label: Coherence
+    description: Also write coherence.csv, the median magnitude-squared coherence per band for every channel pair.
+    defaultValue: false
+  - name: CHUNK_S
+    type: number
+    label: Chunk (s)
+    description: Seconds of signal read at a time (memory per chunk is channels x seconds x rate x 8 bytes).
+    defaultValue: 60
+    min: 5
+  - name: LABEL
+    type: string
+    label: Output folder
+    description: When set, the tables are written to OUTPUT_DIR/<LABEL>/ (for a workflow that runs this step twice).
+    defaultValue: ""
+inputs:
+  - name: ieeg
+    description: >-
+      The ieeg-prep BIDS-iEEG derivative (recordings.csv, *_desc-preproc_ieeg.edf with
+      _channels.tsv and _events.tsv), or any BIDS-iEEG dataset (*_ieeg.edf/.bdf/.vhdr/.fif/.set
+      with optional _channels.tsv and _events.tsv). Found anywhere under INPUT_DIR.
+    mediaTypes:
+      - application/edf
+      - text/csv
+      - text/tab-separated-values
+      - application/json
+    placement: subfolder
+    required: true
+outputs:
+  - name: bandpower
+    description: >-
+      bandpower.csv (recording_id, channel, band, abs_power [µV²], rel_power [share of 1-80 Hz],
+      norm_median [median of the sum-1-normalised 0.5-80 Hz PSD over the band]), one row per good
+      channel and band plus broadband; coherence.csv (recording_id, channel_a, channel_b, band,
+      coherence) when COHERENCE=true; provenance.json.
+    mediaTypes:
+      - text/csv
+      - application/json
